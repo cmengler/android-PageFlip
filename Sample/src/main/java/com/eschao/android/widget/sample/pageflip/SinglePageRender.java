@@ -83,6 +83,10 @@ public class SinglePageRender extends PageRender {
             // draw frame for page flip
             mPageFlip.drawFlipFrame();
         }
+        // draw fading frame
+        else if (mDrawCommand == DRAW_FADING_FRAME) {
+            mPageFlip.drawFadeFrame();
+        }
         // draw stationary page without flipping
         else if (mDrawCommand == DRAW_FULL_PAGE) {
             if (!page.isFirstTextureSet()) {
@@ -152,16 +156,29 @@ public class SinglePageRender extends PageRender {
                 if (state == PageFlipState.END_WITH_BACKWARD) {
                     // don't do anything on page number since mPageNo is always
                     // represents the FIRST_TEXTURE no;
+                    mPageFlip.startFade();
+                    mDrawCommand = DRAW_FADING_FRAME;
                 }
                 // update page number and switch textures for forward flip
                 else if (state == PageFlipState.END_WITH_FORWARD) {
                     mPageFlip.getFirstPage().setFirstTextureWithSecond();
                     mPageNo++;
+
+                    mDrawCommand = DRAW_FULL_PAGE;
                 }
 
-                mDrawCommand = DRAW_FULL_PAGE;
                 return true;
             }
+        } else if (what == DRAW_FADING_FRAME) {
+            // continue fading
+            if (mPageFlip.isFading()) {
+                mDrawCommand = DRAW_FADING_FRAME;
+            }
+            // fading is finished
+            else {
+                mDrawCommand = DRAW_FULL_PAGE;
+            }
+            return true;
         }
         return false;
     }

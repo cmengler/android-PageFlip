@@ -24,8 +24,13 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
+import static android.opengl.GLES10.glColor4f;
+import static android.opengl.GLES20.GL_ONE_MINUS_SRC_ALPHA;
+import static android.opengl.GLES20.glDisable;
+import static android.opengl.GLES20.GL_BLEND;
 import static android.opengl.GLES20.GL_FLOAT;
 import static android.opengl.GLES20.GL_LINEAR;
+import static android.opengl.GLES20.GL_SRC_ALPHA;
 import static android.opengl.GLES20.GL_TEXTURE0;
 import static android.opengl.GLES20.GL_TEXTURE_2D;
 import static android.opengl.GLES20.GL_TEXTURE_MAG_FILTER;
@@ -34,8 +39,10 @@ import static android.opengl.GLES20.GL_TRIANGLE_FAN;
 import static android.opengl.GLES20.GL_TRIANGLE_STRIP;
 import static android.opengl.GLES20.glActiveTexture;
 import static android.opengl.GLES20.glBindTexture;
+import static android.opengl.GLES20.glBlendFunc;
 import static android.opengl.GLES20.glDeleteTextures;
 import static android.opengl.GLES20.glDrawArrays;
+import static android.opengl.GLES20.glEnable;
 import static android.opengl.GLES20.glEnableVertexAttribArray;
 import static android.opengl.GLES20.glGenTextures;
 import static android.opengl.GLES20.glTexParameterf;
@@ -649,6 +656,34 @@ public class Page {
         glDrawArrays(GL_TRIANGLE_STRIP,
                      mFrontVertexSize,
                      vertexes.mVertexesSize - mFrontVertexSize);
+    }
+
+    /**
+     * Draw fade page after page has flipped
+     *
+     * @param program GL shader program
+     */
+    public void drawFadePage(VertexProgram program, float fadeVal) {
+        glUniformMatrix4fv(program.mMVPMatrixLoc, 1, false, VertexProgram.MVPMatrix, 0);
+
+        glBindTexture(GL_TEXTURE_2D, mTexIDs[FIRST_TEXTURE_ID]);
+
+        glUniform1i(program.mTextureLoc, 0);
+
+        glVertexAttribPointer(program.mVertexPosLoc, 3, GL_FLOAT, false, 0, mFullPageVexBuf);
+        glEnableVertexAttribArray(program.mVertexPosLoc);
+
+        glVertexAttribPointer(program.mTexCoordLoc, 2, GL_FLOAT, false, 0, mFullPageTexCoordsBuf);
+        glEnableVertexAttribArray(program.mTexCoordLoc);
+
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        //glColor4f(1, 1, 1, 0.5f);
+
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+        glDisable(GL_BLEND);
     }
 
     /**

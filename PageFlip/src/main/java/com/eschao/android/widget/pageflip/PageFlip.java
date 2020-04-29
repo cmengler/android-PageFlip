@@ -15,6 +15,7 @@
  */
 package com.eschao.android.widget.pageflip;
 
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Point;
@@ -22,6 +23,7 @@ import android.graphics.PointF;
 import android.opengl.GLUtils;
 import android.util.Log;
 import android.view.animation.AccelerateInterpolator;
+import android.view.animation.LinearInterpolator;
 import android.widget.Scroller;
 
 import static android.opengl.GLES20.GL_COLOR_BUFFER_BIT;
@@ -200,6 +202,7 @@ public class PageFlip {
     private VertexProgram mVertexProgram;
     private FoldBackVertexProgram mFoldBackVertexProgram;
     private ShadowVertexProgram mShadowVertexProgram;
+    private FadeVertexProgram mFadeVertexProgram;
 
     // is vertical page flip
     private boolean mIsVertical;
@@ -208,6 +211,9 @@ public class PageFlip {
     // use for flip animation
     private Scroller mScroller;
     private Context mContext;
+
+    // use for fade animation
+    private ValueAnimator mValueAnimator;
 
     // pages and page mode
     // in single page mode, there is only one page in the index 0
@@ -239,6 +245,11 @@ public class PageFlip {
         mListener = null;
         mWidthRationOfClickToFlip = WIDTH_RATIO_OF_CLICK_TO_FLIP;
 
+        // init fade animator
+        mValueAnimator = ValueAnimator.ofFloat(1f, 0f);
+        mValueAnimator.setDuration(1000);
+        mValueAnimator.setInterpolator(new LinearInterpolator());
+
         // init pages
         mPages = new Page[PAGE_SIZE];
         mPageMode = SINGLE_PAGE_MODE;
@@ -263,6 +274,7 @@ public class PageFlip {
         mVertexProgram = new VertexProgram();
         mFoldBackVertexProgram = new FoldBackVertexProgram();
         mShadowVertexProgram = new ShadowVertexProgram();
+        mFadeVertexProgram = new FadeVertexProgram();
 
         // init vertexes
         mFoldFrontVertexes = new Vertexes();
@@ -533,6 +545,7 @@ public class PageFlip {
             mVertexProgram.init(mContext);
             mFoldBackVertexProgram.init(mContext);
             mShadowVertexProgram.init(mContext);
+            mFadeVertexProgram.init(mContext);
 
             // create gradient shadow texture
             createGradientShadowTexture();
@@ -541,6 +554,7 @@ public class PageFlip {
             mVertexProgram.delete();
             mFoldBackVertexProgram.delete();
             mShadowVertexProgram.delete();
+            mFadeVertexProgram.delete();
             throw e;
         }
     }
@@ -557,6 +571,8 @@ public class PageFlip {
         mViewRect.set(width, height);
         glViewport(0, 0, width, height);
         mVertexProgram.initMatrix(-mViewRect.halfW, mViewRect.halfW,
+                                  -mViewRect.halfH, mViewRect.halfH);
+        mFadeVertexProgram.initMatrix(-mViewRect.halfW, mViewRect.halfW,
                                   -mViewRect.halfH, mViewRect.halfH);
         computeMaxMeshCount();
         createPages();
@@ -1036,6 +1052,22 @@ public class PageFlip {
     }
 
     /**
+     * Starts the fade animation
+     */
+    public void startFade() {
+        mValueAnimator.start();
+    }
+
+    /**
+     * Is fading ?
+     *
+     * @return true if page is fading
+     */
+    public boolean isFading() {
+        return mValueAnimator.isRunning();
+    }
+
+    /**
      * Is animation stated?
      *
      * @return true if flip is started
@@ -1121,6 +1153,17 @@ public class PageFlip {
         glUseProgram(mShadowVertexProgram.mProgramRef);
         mFoldBaseShadow.draw(mShadowVertexProgram);
         mFoldEdgesShadow.draw(mShadowVertexProgram);
+    }
+
+    /**
+     * Draw fading frame
+     */
+    public void drawFadeFrame() {
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glUseProgram(mFadeVertexProgram.mProgramRef);
+        glActiveTexture(GL_TEXTURE0);
+
+        mPages[FIRST_PAGE].drawFadePage(mFadeVertexProgram, (float) mValueAnimator.getAnimatedValue());
     }
 
     /**
